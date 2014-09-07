@@ -81,10 +81,11 @@ namespace AIO
             Commands.ChatCommands.Add(new Command("tshock.world.modify", staffchatlist, "slist"));
             #endregion
             #region report grief/building
-            Commands.ChatCommands.Add(new Command("tshock.world.modify", reportgrief, "reportgrief") { AllowServer = false });
-            Commands.ChatCommands.Add(new Command("aio.checkgrief", checkgrief, "checkgrief") { AllowServer = false });
-            Commands.ChatCommands.Add(new Command("aio.listgrief", listgrief, "listgrief"));
-            Commands.ChatCommands.Add(new Command("aio.checkbuilding", checkbuilding, "checkbuilding") { AllowServer = false });
+            Commands.ChatCommands.Add(new Command("tshock.world.modify", reportgrief, "reportgrief", "rg") { AllowServer = false });
+            Commands.ChatCommands.Add(new Command("aio.checkgrief", checkgrief, "checkgrief", "cg") { AllowServer = false });
+            Commands.ChatCommands.Add(new Command("aio.listgrief", listgrief, "listgrief", "lg"));
+            Commands.ChatCommands.Add(new Command("aio.checkbuilding", checkbuilding, "checkbuilding", "cb") { AllowServer = false });
+            Commands.ChatCommands.Add(new Command("aio.listbuilding", listbuilding, "listbuilding", "lb"));
             Commands.ChatCommands.Add(new Command("tshock.world.modify", building, "building") { AllowServer = false });
             #endregion
             #region position commands
@@ -442,6 +443,20 @@ namespace AIO
                     i = HouseLoc.Count;
                 }
             }
+        }
+        public void listbuilding(CommandArgs args)
+        {
+            if (HouseLoc.Count == 0)
+            {
+                args.Player.SendInfoMessage("There currently aren't any reported buildings");
+                return;
+            }
+            for (int i = 0; i < HouseLoc.Count; i++)
+            {
+                Report Re = HouseLoc[i];
+                args.Player.SendInfoMessage(string.Format("[{0}] {1} reported a building at POS ({2},{3}) at {4}", (i + 1).ToString(), Re.Name, Re.X, Re.Y, Re.Date));
+            }
+
         }
         public void building(CommandArgs args)
         {
