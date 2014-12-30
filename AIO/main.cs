@@ -384,7 +384,7 @@ namespace AIO
             {
                 if (ts != null)
                 {
-                    if (ts.Group.HasPermission("tshock.admin.kick"))
+                    if (ts.Group.HasPermission("aio.checkgrief"))
                     { ts.SendInfoMessage(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY)); }
                 }
             }
@@ -481,7 +481,7 @@ namespace AIO
                 {
                     if (ts != null)
                     {
-                        if (ts.Group.HasPermission("tshock.admin.kick"))
+                        if (ts.Group.HasPermission("aio.checkbuilding"))
                         { ts.SendInfoMessage(string.Format("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY)); }
                     }
                 }
