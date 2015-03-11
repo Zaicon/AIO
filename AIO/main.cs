@@ -1,20 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using Terraria;
-using TShockAPI;
-using TerrariaApi.Server;
-using System.Reflection;
-using System.IO;
-using System.Data;
-using System.Text;
-using TShockAPI.DB;
-using Mono.Data.Sqlite;
+﻿using Mono.Data.Sqlite;
 using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using Terraria;
+using TerrariaApi.Server;
+using TShockAPI;
+using TShockAPI.DB;
 
 
 namespace AIO
 {
-    [ApiVersion(1, 16)]
+    [ApiVersion(1, 17)]
     public class AIO : TerrariaPlugin
     {
         #region items
@@ -75,9 +76,9 @@ namespace AIO
 
             #region staffchatcommands
             Commands.ChatCommands.Add(new Command(staffchat, "s"));
-            Commands.ChatCommands.Add(new Command("aio.staffchat.kick", staffchatkick, "skick"));
-            Commands.ChatCommands.Add(new Command("aio.staffchat.invite", staffchatinvite, "sinvite"));
-            Commands.ChatCommands.Add(new Command("aio.staffchat.clear", staffchatclear, "sclear"));
+            Commands.ChatCommands.Add(new Command("aio.staffchat.admin", staffchatkick, "skick"));
+            Commands.ChatCommands.Add(new Command("aio.staffchat.admin", staffchatinvite, "sinvite"));
+            Commands.ChatCommands.Add(new Command("aio.staffchat.admin", staffchatclear, "sclear"));
             Commands.ChatCommands.Add(new Command("tshock.world.modify", staffchatlist, "slist"));
             #endregion
             #region report grief/building
@@ -95,7 +96,7 @@ namespace AIO
             #region other commands
             Commands.ChatCommands.Add(new Command(staff, "staff"));
             Commands.ChatCommands.Add(new Command("aio.freeze", freeze, "freeze"));
-            Commands.ChatCommands.Add(new Command("aio.read", GetItemOrBuff, "read") { AllowServer = false });
+            Commands.ChatCommands.Add(new Command("aio.read", GetItemOrBuff, "read"));
             Commands.ChatCommands.Add(new Command("aio.copy", copyitems, "copy") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.killchest", killchest, "killchest", "kc") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.fillchest", fillchest, "fillchest", "fc") { AllowServer = false });
@@ -155,17 +156,21 @@ namespace AIO
         #region onchat
         public void OnChat(ServerChatEventArgs args)
         {
-            if (args.Text.StartsWith("/w ") || args.Text.StartsWith("/whisper ") || args.Text.StartsWith("/r ") || args.Text.StartsWith("/reply "))
+            List<string> whisperalts = new List<string> { "w", "whisper", "t", "tell", "r", "reply" };
+            if (args.Text.StartsWith(TShock.Config.CommandSpecifier) || args.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
             {
-                if (args.Text.Length > 6)
+                foreach (string alt in whisperalts)
                 {
-                    foreach (TSPlayer ts in TShock.Players)
+                    if (args.Text.StartsWith("{0}{1} ".SFormat(args.Text[0].ToString(), alt)))
                     {
-                        if (ts != null)
+                        foreach (TSPlayer ts in TShock.Players)
                         {
-                            if (spies.Contains(ts.IP))
+                            if (ts != null)
                             {
-                                ts.SendMessage(TShock.Players[args.Who].Name + ": " + args.Text, staffchatcolor);
+                                if (spies.Contains(ts.IP))
+                                {
+                                    ts.SendMessage(TShock.Players[args.Who].Name + ": " + args.Text, staffchatcolor);
+                                }
                             }
                         }
                     }
@@ -201,7 +206,7 @@ namespace AIO
         #region staffchat
         private void staffchat(CommandArgs args)
         {
-            if (args.Player.Group.HasPermission("tshock.admin.kick") || staffchatplayers.Contains(args.Player.IP))
+            if (args.Player.Group.HasPermission("aio.staffchat.chat") || staffchatplayers.Contains(args.Player.IP))
             {
                 if (args.Parameters.Count >= 1)
                 {
@@ -209,7 +214,7 @@ namespace AIO
                     {
                         if (ts != null)
                         {
-                            if (ts.Group.HasPermission("tshock.admin.kick") || staffchatplayers.Contains(ts.IP))
+                            if (ts.Group.HasPermission("aio.staffchat.chat") || staffchatplayers.Contains(ts.IP))
                             {
                                 string message = string.Join(" ", args.Parameters);
                                 ts.SendMessage("[Staffchat] " + args.Player.Name + ": " + message, staffchatcolor);
@@ -218,68 +223,68 @@ namespace AIO
                     }
                 }
                 else             
-                    args.Player.SendMessage("/s \"[Message]\" is the right format.", staffchatcolor);               
+                    args.Player.SendMessage("{0}s \"[Message]\" is the right format.".SFormat((args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier)), staffchatcolor);               
             }
             else
-                args.Player.SendErrorMessage("You do not have access to that command because you haven't been invited.");
+                args.Player.SendErrorMessage("You have not been invited to the staffchat!");
         }
 
         private void staffchatinvite(CommandArgs args)
         {
             if (args.Parameters.Count < 1)
             {
-                args.Player.SendMessage("Invalid syntax! Syntax: /sinvite <player>", Color.Red);
+                args.Player.SendErrorMessage("Invalid syntax! Syntax: {0}sinvite <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                 return;
             }
             var foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
             if (foundplr.Count == 0)
             {
-                args.Player.SendMessage("Invalid player!", Color.Red);
+                args.Player.SendErrorMessage("Invalid player!");
             }
             else if (foundplr.Count > 1)
             {
-                args.Player.SendMessage(string.Format("More than one ({0}) player matched!", foundplr.Count), Color.Red);
+                TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
             }
             var plr = foundplr[0];
             {
-                if (!staffchatplayers.Contains(plr.IP) && !plr.Group.HasPermission("tshock.admin.ban"))
+                if (!staffchatplayers.Contains(plr.IP) && !plr.Group.HasPermission("aio.staffchat.chat"))
                 {
                     staffchatplayers.Add(plr.IP);
-                    plr.SendInfoMessage("You have been invited to the staffchat, type /s [message] to talk.");
+                    plr.SendInfoMessage("You have been invited to the staffchat, type {0}s [message] to talk.", (TShock.Config.CommandSpecifier));
                     foreach (TSPlayer ts in TShock.Players)
                     {
                         if (ts != null)
                         {
-                            if (ts.Group.HasPermission("tshock.admin.ban"))
+                            if (ts.Group.HasPermission("aio.staffchat.chat"))
                             {
-                                ts.SendInfoMessage(plr.Name + " has been invited to the staffchat.");
+                                ts.SendErrorMessage(plr.Name + " has been invited to the staffchat.");
                             }
                         }
                     }
                 }
                 else
-                    args.Player.SendInfoMessage("Player is already in the staffchat.");
+                    args.Player.SendErrorMessage("Player is already in the staffchat.");
             }
         }
         private void staffchatkick(CommandArgs args)
         {
             if (args.Parameters.Count < 1)
             {
-                args.Player.SendMessage("Invalid syntax! Syntax: /skick <player>", Color.Red);
+                args.Player.SendErrorMessage("Invalid syntax! Syntax: {0}skick <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                 return;
             }
-            var foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
+            List<TSPlayer> foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
             if (foundplr.Count == 0)
             {
-                args.Player.SendMessage("Invalid player!", Color.Red);
+                args.Player.SendErrorMessage("Invalid player!");
             }
             else if (foundplr.Count > 1)
             {
-                args.Player.SendMessage(string.Format("More than one ({0}) player matched!", foundplr.Count), Color.Red);
+                TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
             }
             var plr = foundplr[0];
             {
-                if (staffchatplayers.Contains(plr.IP) && !plr.Group.HasPermission("tshock.admin.ban"))
+                if (staffchatplayers.Contains(plr.IP) && !plr.Group.HasPermission("aio.staffchat.chat"))
                 {
                     staffchatplayers.Remove(plr.IP);
                     plr.SendInfoMessage("You have been removed from the staffchat.");
@@ -287,15 +292,18 @@ namespace AIO
                     {
                         if (ts != null)
                         {
-                            if (ts.Group.HasPermission("tshock.admin.ban"))
+                            if (ts.Group.HasPermission("aio.staffchat.chat"))
                             {
-                                ts.SendInfoMessage(plr.Name + " has been removed from the staffchat.");
+                                if (!args.Silent)
+                                    ts.SendSuccessMessage(plr.Name + " has been removed from the staffchat.");
                             }
                         }
                     }
                 }
+                else if (plr.Group.HasPermission("aio.staffchat.chat"))
+                    args.Player.SendErrorMessage("You can't kick a staff member from staffchat!");
                 else
-                    args.Player.SendInfoMessage("You can't kick a player that isn't in the chat!");
+                    args.Player.SendErrorMessage("This player hasn't been invited to staffchat!");
             }
         }
         private void staffchatclear(CommandArgs args)
@@ -306,7 +314,8 @@ namespace AIO
                 {
                     if (staffchatplayers.Contains(ts.IP))
                     {
-                        ts.SendInfoMessage("You have been removed from the staffchat.");
+                        if (!args.Silent)
+                            ts.SendInfoMessage("You have been removed from the staffchat.");
                     }
                 }
             }
@@ -315,34 +324,36 @@ namespace AIO
             {
                 if (ts != null)
                 {
-                    if (ts.Group.HasPermission("tshock.admin.ban"))
+                    if (ts.Group.HasPermission("aio.staffchat.chat"))
                     {
-                        ts.SendInfoMessage("Staff chat has been cleared!");
+                        if (!args.Silent)
+                            ts.SendInfoMessage("Staffchat invites have been cleared!");
                     }
                 }
             }
         }
         private void staffchatlist(CommandArgs args)
         {
-            string staffchatlist = "";
+            List<string> staffchatlist = new List<string>();
+            //string staffchatlist = "";
             foreach (TSPlayer ts in TShock.Players)
             {
                 if (ts != null)
                 {
                     if (staffchatplayers.Contains(ts.IP))
                     {
-                        staffchatlist = staffchatlist + ts.Name + ", ";
+                        staffchatlist.Add(ts.UserAccountName);
                     }
                 }
             }
-            args.Player.SendInfoMessage("Players in staffchat: " + staffchatlist);
+            args.Player.SendInfoMessage("Players in staffchat: {0}", string.Join(", ", staffchatlist));
         }
         #endregion
 
         #region list of online staff
         public void staff(CommandArgs args)
         {
-            List<TSPlayer> Staff = new List<TSPlayer>(TShock.Players).FindAll(t => t!=null && t.Group.HasPermission("tshock.admin.kick"));
+            List<TSPlayer> Staff = new List<TSPlayer>(TShock.Players).FindAll(t => t != null && t.Group.HasPermission("aio.staffchat.chat"));
             if (Staff.Count == 0)
             {
                 args.Player.SendErrorMessage("No staff members currently online.");
@@ -373,19 +384,19 @@ namespace AIO
                 int ly = loc.Y;
                 if (lx > x - 50 && ly > y - 50 && lx < x + 50 && ly < y + 50)
                 {
-                    args.Player.SendInfoMessage("This location has already been reported!");
+                    args.Player.SendErrorMessage("This location has already been reported!");
                     return;
                 }
             }
             GriefLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.Name, DateTime.UtcNow));
-            args.Player.SendInfoMessage("Your grief has been reported!");
+            args.Player.SendSuccessMessage("Your grief has been reported!");
             Console.WriteLine(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY));
             foreach (TSPlayer ts in TShock.Players)
             {
                 if (ts != null)
                 {
                     if (ts.Group.HasPermission("aio.checkgrief"))
-                    { ts.SendInfoMessage(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY)); }
+                    { ts.SendInfoMessage("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY); }
                 }
             }
         }
@@ -393,7 +404,7 @@ namespace AIO
         {
             if (GriefLoc.Count == 0)
             {
-                args.Player.SendInfoMessage("There currently isn't any reported grief");
+                args.Player.SendErrorMessage("There currently isn't any reported grief");
                 return;
             }
             for (int i = 0; i < GriefLoc.Count; i++)
@@ -407,7 +418,7 @@ namespace AIO
         {
             if (GriefLoc.Count == 0)
             {
-                args.Player.SendInfoMessage("There currently isn't any reported grief");
+                args.Player.SendErrorMessage("There currently isn't any reported grief");
                 return;
             }
             for (int i = 0; i < GriefLoc.Count; i++)
@@ -416,7 +427,7 @@ namespace AIO
                 if (Re != null)
                 {
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
-                    args.Player.SendInfoMessage(string.Format("Reported by: {0} at {1}", Re.Name, Re.Date));
+                    args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     GriefLoc.Remove(Re);
                     i = GriefLoc.Count;
                 }
@@ -429,7 +440,7 @@ namespace AIO
         {
             if (HouseLoc.Count == 0)
             {
-                args.Player.SendInfoMessage("There currently isn't any reported building");
+                args.Player.SendErrorMessage("There currently isn't any reported building");
                 return;
             }
             for (int i = 0; i < HouseLoc.Count; i++)
@@ -438,7 +449,7 @@ namespace AIO
                 if (Re != null)
                 {
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
-                    args.Player.SendInfoMessage(string.Format("Reported by: {0} at {1}", Re.Name, Re.Date));
+                    args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     HouseLoc.Remove(Re);
                     i = HouseLoc.Count;
                 }
@@ -448,13 +459,13 @@ namespace AIO
         {
             if (HouseLoc.Count == 0)
             {
-                args.Player.SendInfoMessage("There currently aren't any reported buildings");
+                args.Player.SendErrorMessage("There currently aren't any reported buildings");
                 return;
             }
             for (int i = 0; i < HouseLoc.Count; i++)
             {
                 Report Re = HouseLoc[i];
-                args.Player.SendInfoMessage(string.Format("[{0}] {1} reported a building at POS ({2},{3}) at {4}", (i + 1).ToString(), Re.Name, Re.X, Re.Y, Re.Date));
+                args.Player.SendInfoMessage("[{0}] {1} reported a building at POS ({2},{3}) at {4}", (i + 1).ToString(), Re.Name, Re.X, Re.Y, Re.Date);
             }
 
         }
@@ -468,21 +479,21 @@ namespace AIO
                 int ly = loc.Y;
                 if (lx > x - 50 && ly > y - 50 && lx < x + 50 && ly < y + 50)
                 {
-                    args.Player.SendInfoMessage("This location has already been reported!");
+                    args.Player.SendErrorMessage("This location has already been reported!");
                     return;
                 }
             }
             if (!TShock.Regions.InArea(args.Player.TileX, args.Player.TileY))
             {
                 HouseLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.Name, DateTime.UtcNow));
-                args.Player.SendInfoMessage(string.Format("Your House has been reported at {0}, {1}.", args.Player.TileX, args.Player.TileY));
+                args.Player.SendSuccessMessage("Your House has been reported at {0}, {1}.", args.Player.TileX, args.Player.TileY);
                 Console.WriteLine(string.Format("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY));
                 foreach (TSPlayer ts in TShock.Players)
                 {
                     if (ts != null)
                     {
                         if (ts.Group.HasPermission("aio.checkbuilding"))
-                        { ts.SendInfoMessage(string.Format("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY)); }
+                        { ts.SendInfoMessage("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY); }
                     }
                 }
             }
@@ -493,14 +504,14 @@ namespace AIO
         #region tppos & pos
         private void pos(CommandArgs args)
         {
-            args.Player.SendInfoMessage(string.Format("X: {0}, Y: {1}", args.Player.TileX, args.Player.TileY));
+            args.Player.SendInfoMessage("X: {0}, Y: {1}", args.Player.TileX, args.Player.TileY);
         }
 
         private void tppos(CommandArgs args)
         {
             if (args.Parameters.Count != 2)
             {
-                args.Player.SendErrorMessage("Invalid syntax, use /tppos <x> <y>");
+                args.Player.SendErrorMessage("Invalid syntax, use {0}tppos <x> <y>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
             }
             else
             {
@@ -519,7 +530,7 @@ namespace AIO
             {
                 if (args.Parameters.Count != 1)
                 {
-                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /freeze [player]");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: {0}freeze [player]", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                     return;
                 }
                 var foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
@@ -530,20 +541,22 @@ namespace AIO
                 }
                 else if (foundplr.Count > 1)
                 {
-                    args.Player.SendErrorMessage(string.Format("More than one ({0}) player matched!", args.Parameters.Count));
+                    TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
                     return;
                 }
                 var plr = foundplr[0];
                 if (!frozenplayer.Contains(plr.IP))
                 {
                     frozenplayer.Add(plr.IP);
-                    TSPlayer.All.SendInfoMessage(string.Format("{0} froze {1}", args.Player.Name, plr.Name));
+                    if (!args.Silent)
+                        TSPlayer.All.SendInfoMessage("{0} froze {1}", args.Player.Name, plr.Name);
                     return;
                 }
                 else
                 {
                     frozenplayer.Remove(plr.IP);
-                    TSPlayer.All.SendInfoMessage(string.Format("{0} unfroze {1}", args.Player.Name, plr.Name));
+                    if (!args.Silent)
+                        TSPlayer.All.SendInfoMessage("{0} unfroze {1}", args.Player.Name, plr.Name);
                     return;
                 }
             }
@@ -558,7 +571,7 @@ namespace AIO
             {
                 if (args.Parameters.Count != 2)
                 {
-                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /read <inventory/buff/armor/dye> <player>");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: {0}read <inventory/buff/armor/dye> <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                     return;
                 }
                 var foundplr = TShock.Utils.FindPlayer(args.Parameters[1]);
@@ -569,7 +582,7 @@ namespace AIO
                 }
                 else if (foundplr.Count > 1)
                 {
-                    args.Player.SendErrorMessage(string.Format("More than one ({0}) player matched!", args.Parameters.Count));
+                    TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
                     return;
                 }
                 var plr = foundplr[0];
@@ -617,7 +630,7 @@ namespace AIO
                         args.Player.SendInfoMessage(string.Join(", ", dye));
                         return;
                     default:
-                        args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /read <inventory/buff/armor/dye> <player>");
+                        args.Player.SendErrorMessage("Invalid syntax! Proper syntax: {0}read <inventory/buff/armor/dye> <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                         return;
                 }
             }
@@ -631,7 +644,7 @@ namespace AIO
             {
                 if (args.Parameters.Count != 2)
                 {
-                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /copy <inventory/buff/armor/dye> <player>");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: {0}copy <inventory/buff/armor/dye> <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                     return;
                 }
                 var foundplr = TShock.Utils.FindPlayer(args.Parameters[1]);
@@ -642,7 +655,7 @@ namespace AIO
                 }
                 else if (foundplr.Count > 1)
                 {
-                    args.Player.SendErrorMessage(string.Format("More than one ({0}) player matched!", args.Parameters.Count));
+                    TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
                     return;
                 }
                 var plr = foundplr[0];
@@ -679,7 +692,7 @@ namespace AIO
                         }
                         return;
                     default:
-                        args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /copy <inventory/buff/armor/dye> <player>");
+                        args.Player.SendErrorMessage("Invalid syntax! Proper syntax: {0}copy <inventory/buff/armor/dye> <player>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                         return;
                 }
             }
@@ -699,7 +712,7 @@ namespace AIO
             }
             if (args.Parameters.Count != 1)
             {
-                args.Player.SendInfoMessage("/gen <shroompatch/islandhouse/island/dungeon/minehouse/hive/");
+                args.Player.SendInfoMessage("{0}gen <shroompatch/islandhouse/island/dungeon/minehouse/hive/", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                 args.Player.SendInfoMessage("cloudisland/temple/hellfort/hellhouse/mountain/pyramid/crimson>");
                 args.Player.SendInfoMessage("[WARNING] islands will spawn 50 tiles above you! [WARNING]");
             }
@@ -773,7 +786,7 @@ namespace AIO
                         informplayers();
                         break;
                     default:
-                        args.Player.SendInfoMessage("/gen <shroompatch/islandhouse/island/dungeon/minehouse/hive/");
+                        args.Player.SendInfoMessage("{0}gen <shroompatch/islandhouse/island/dungeon/minehouse/hive/", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                         args.Player.SendInfoMessage("cloudisland/temple/hellfort/hellhouse/mountain/pyramid/crimson>");
                         args.Player.SendInfoMessage("[WARNING] islands will spawn 50 tiles above you! [WARNING]");
                         break;
@@ -808,7 +821,7 @@ namespace AIO
         }
         void notify(TSPlayer ts, string spawned)
         {
-            ts.SendInfoMessage("You succesfully generated a " + spawned);
+            ts.SendSuccessMessage("You succesfully generated a " + spawned);
         }
 
         public static void informplayers(bool hard = false)
@@ -836,13 +849,13 @@ namespace AIO
         #region fillchest
         private void fillchest(CommandArgs args)
         {
-            if (!usinginfchests) { args.Player.SendInfoMessage("Sorry but you can't use /fillchest with infinitechests plugin!"); return; }
+            if (!usinginfchests) { args.Player.SendInfoMessage("Sorry but you can't use {0}fillchest with infinitechests plugin!", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier)); return; }
             lastchest = false;
             StringBuilder items = new StringBuilder();
             bool found = false;
             if (args.Parameters.Count != 1)
             {
-                args.Player.SendErrorMessage("Invalid syntax! use /fillchest <number>");
+                args.Player.SendErrorMessage("Invalid syntax! use {0}fillchest <number>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                 return;
             }
             else
@@ -854,7 +867,7 @@ namespace AIO
                         if (Main.chest[z].x == args.Player.TileX && Main.chest[z].y == args.Player.TileY + 1)
                         {
                             int chestitem = Convert.ToInt32(args.Parameters[0]);
-                            if (chestitem > 1866 || chestitem < -48) { args.Player.SendErrorMessage("Id must be between -48 and 1866"); return; }
+                            if (chestitem > 2748 || chestitem < -48) { args.Player.SendErrorMessage("Id must be between -48 and 2748"); return; }
                             for (int it = 0; it < 40; it++)
                             {
                                 if (chestitem == 0) { chestitem++; }
@@ -863,10 +876,10 @@ namespace AIO
                                 itm.stack = TShock.Utils.GetItemById(chestitem).maxStack;   
                                 Main.chest[z].item[it] = itm;
                                 chestitem++;
-                                if (chestitem > 1866) { break; }
+                                if (chestitem > 2748) { break; }
                             }
                             found = true;
-                            args.Player.SendInfoMessage(string.Format("The chest under you has been filled with items {0} trough {1}!", chestitem - 40, chestitem));
+                            args.Player.SendSuccessMessage("The chest under you has been filled with items {0} through {1}!", chestitem - 40, chestitem);
                             return;
                         }
                     }
@@ -874,7 +887,7 @@ namespace AIO
             }
             if (!found)
             {
-                args.Player.SendInfoMessage("No chest found under you!");
+                args.Player.SendErrorMessage("No chest found under you!");
             }
             return;
         }
@@ -883,7 +896,7 @@ namespace AIO
         #region killchest
         private void killchest(CommandArgs args)
         {
-            if (usinginfchests) { args.Player.SendInfoMessage("Sorry but you can't use /killchest with infinitechests plugin!"); return; }
+            if (usinginfchests) { args.Player.SendErrorMessage("Sorry but you can't use {0}killchest with infinitechests plugin!", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier)); return; }
             bool found = false;
             for (int x = 0; x < 1000; x++)
             {
@@ -898,7 +911,7 @@ namespace AIO
 
                         WorldGen.KillTile(Main.chest[x].x, Main.chest[x].y, false, false, true);
                         Main.chest[x] = null;
-                        args.Player.SendInfoMessage("The chest under you has been killed!");
+                        args.Player.SendSuccessMessage("The chest under you has been killed!");
                         informplayers();
                         return;
                     }
@@ -918,11 +931,11 @@ namespace AIO
             if (spies.Contains(args.Player.IP))
             {
                 spies.Remove(args.Player.IP);
-                args.Player.SendInfoMessage("You have stopped spying on whispers");
+                args.Player.SendSuccessMessage("You have stopped spying on whispers");
                 return;
             }
             spies.Add(args.Player.IP);
-            args.Player.SendInfoMessage("You are now spying on whispers");
+            args.Player.SendSuccessMessage("You are now spying on whispers");
         }
         #endregion
 
@@ -937,7 +950,7 @@ namespace AIO
                 #region choose direction
                 if (args.Parameters.Count < 1)
                 {
-                    args.Player.SendErrorMessage("Use /chestroom <tl/tr/bl/br/tc/bc>");
+                    args.Player.SendErrorMessage("Use {0}chestroom <tl/tr/bl/br/tc/bc>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                     args.Player.SendInfoMessage("t = top, l = left, r = right, b = bottom, c = center");
                     args.Player.SendErrorMessage("This is where you'll stand when the chestroom spawns");
                     return;
@@ -964,12 +977,13 @@ namespace AIO
                         y -= 35;
                         break;
                     default:
-                        args.Player.SendErrorMessage("Use /chestroom <tl/tr/bl/br/tc/bc>");
+                        args.Player.SendErrorMessage("Use {0}chestroom <tl/tr/bl/br/tc/bc>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
                         args.Player.SendErrorMessage("t = top, l = left, r = right, b = bottom, c = center");
                         args.Player.SendErrorMessage("This is where you'll stand when the chestroom spawns");
                         return;
                 }
-                TSPlayer.All.SendErrorMessage("Placing chestroom...");
+                if (!args.Silent)
+                    TSPlayer.All.SendErrorMessage("Placing chestroom...");
                 #endregion choose direction
 
                 #region choose tiles/background/chests/torches/platforms
@@ -989,7 +1003,7 @@ namespace AIO
                         count++;
                     }
                 }
-                if (count > 930) { args.Player.SendInfoMessage("Making this chestroom would make you pass the chest limit, chestroom cancelled."); return; }
+                if (count > 930) { args.Player.SendErrorMessage("Making this chestroom would make you pass the chest limit, chestroom cancelled."); return; }
                 bckup = count;
                 #endregion count current chests
 
@@ -1144,7 +1158,7 @@ namespace AIO
                 }
                 #endregion fill the chests with LOOT
                 canrollback = true;
-                args.Player.SendInfoMessage("Chestroom succesfully created!");
+                args.Player.SendSuccessMessage("Chestroom succesfully created!");
                 informplayers();
 
         }
@@ -1159,7 +1173,8 @@ namespace AIO
                 return;
             }
             canrollback = false;
-            TSPlayer.All.SendErrorMessage("Rolling back chestroom...");
+            if (!args.Silent)
+                TSPlayer.All.SendErrorMessage("Rolling back chestroom...");
 
             Item itm = TShock.Utils.GetItemById(0);
             if (usinginfchests)
@@ -1187,7 +1202,7 @@ namespace AIO
             }
             informplayers();
             Backups.Clear();
-            args.Player.SendInfoMessage("Chestroom succesfully wiped!");
+            args.Player.SendSuccessMessage("Chestroom succesfully wiped!");
         }      
         #endregion undo chestroom
 
