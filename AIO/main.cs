@@ -89,17 +89,13 @@ namespace AIO
             Commands.ChatCommands.Add(new Command("aio.listbuilding", listbuilding, "listbuilding", "lb"));
             Commands.ChatCommands.Add(new Command("tshock.world.modify", building, "building") { AllowServer = false });
             #endregion
-            #region position commands
-            //Commands.ChatCommands.Add(new Command("tshock.world.modify",pos, "pos") { AllowServer = false });
-            //Commands.ChatCommands.Add(new Command("tshock.world.modify",tppos, "tppos") { AllowServer = false });
-            #endregion
             #region other commands
             Commands.ChatCommands.Add(new Command(staff, "staff"));
             Commands.ChatCommands.Add(new Command("aio.freeze", freeze, "freeze"));
             Commands.ChatCommands.Add(new Command("aio.read", GetItemOrBuff, "read"));
             Commands.ChatCommands.Add(new Command("aio.copy", copyitems, "copy") { AllowServer = false });
-            Commands.ChatCommands.Add(new Command("aio.killchest", killchest, "killchest", "kc") { AllowServer = false });
-            Commands.ChatCommands.Add(new Command("aio.fillchest", fillchest, "fillchest", "fc") { AllowServer = false });
+            //Commands.ChatCommands.Add(new Command("aio.killchest", killchest, "killchest", "kc") { AllowServer = false });
+            //Commands.ChatCommands.Add(new Command("aio.fillchest", fillchest, "fillchest", "fc") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.worldgen", world_gen, "gen") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.spywhisper", SPY, "spywhisper"));
             Commands.ChatCommands.Add(new Command("aio.chestroom", chestroom, "chestroom", "cr"));
@@ -500,29 +496,7 @@ namespace AIO
             else { args.Player.SendErrorMessage("This house is already protected, no need to report it!"); }
         }
         #endregion
-
-        #region tppos & pos
-        private void pos(CommandArgs args)
-        {
-            args.Player.SendInfoMessage("X: {0}, Y: {1}", args.Player.TileX, args.Player.TileY);
-        }
-
-        private void tppos(CommandArgs args)
-        {
-            if (args.Parameters.Count != 2)
-            {
-                args.Player.SendErrorMessage("Invalid syntax, use {0}tppos <x> <y>", (args.Silent ? TShock.Config.CommandSilentSpecifier : TShock.Config.CommandSpecifier));
-            }
-            else
-            {
-                int x = Convert.ToInt32(args.Parameters[0]);
-                int y = Convert.ToInt32(args.Parameters[1]);
-                args.Player.Teleport(x * 16, y * 16);
-            }
-
-        }
-        #endregion
-
+        
         #region freeze
         public void freeze(CommandArgs args)
         {
