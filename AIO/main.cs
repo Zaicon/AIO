@@ -26,9 +26,12 @@ namespace AIO
 
         private List<Report> HouseLoc = new List<Report>();
         private List<Report> GriefLoc = new List<Report>();
+        List<string> cgrief = new List<string>();
+        List<string> cbuilding = new List<string>();
 
         IDbConnection Database;
         bool usinginfchests = false;
+        string filepath = Path.Combine("tshock", "logs");
 
         Random rnd = new Random();
 
@@ -94,8 +97,6 @@ namespace AIO
             Commands.ChatCommands.Add(new Command("aio.freeze", freeze, "freeze"));
             Commands.ChatCommands.Add(new Command("aio.read", GetItemOrBuff, "read"));
             Commands.ChatCommands.Add(new Command("aio.copy", copyitems, "copy") { AllowServer = false });
-            //Commands.ChatCommands.Add(new Command("aio.killchest", killchest, "killchest", "kc") { AllowServer = false });
-            //Commands.ChatCommands.Add(new Command("aio.fillchest", fillchest, "fillchest", "fc") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.worldgen", world_gen, "gen") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.spywhisper", SPY, "spywhisper"));
             Commands.ChatCommands.Add(new Command("aio.chestroom", chestroom, "chestroom", "cr"));
@@ -213,7 +214,7 @@ namespace AIO
                             if (ts.Group.HasPermission("aio.staffchat.chat") || staffchatplayers.Contains(ts.IP))
                             {
                                 string message = string.Join(" ", args.Parameters);
-                                ts.SendMessage("[Staffchat] " + args.Player.Name + ": " + message, staffchatcolor);
+                                ts.SendMessage("[Staffchat] " + args.Player.User.Name + ": " + message, staffchatcolor);
                             }
                         }
                     }
@@ -338,7 +339,7 @@ namespace AIO
                 {
                     if (staffchatplayers.Contains(ts.IP))
                     {
-                        staffchatlist.Add(ts.UserAccountName);
+                        staffchatlist.Add(ts.Name);
                     }
                 }
             }
@@ -384,15 +385,16 @@ namespace AIO
                     return;
                 }
             }
-            GriefLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.Name, DateTime.UtcNow));
+            GriefLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.User.Name, DateTime.UtcNow));
             args.Player.SendSuccessMessage("Your grief has been reported!");
-            Console.WriteLine(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY));
+            Console.WriteLine(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY));
+            File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a grief at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
             foreach (TSPlayer ts in TShock.Players)
             {
                 if (ts != null)
                 {
                     if (ts.Group.HasPermission("aio.checkgrief"))
-                    { ts.SendInfoMessage("{0} has sent in a grief report at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY); }
+                    { ts.SendInfoMessage("{0} has sent in a grief report at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY); }
                 }
             }
         }
@@ -422,6 +424,8 @@ namespace AIO
                 Report Re = GriefLoc[i];
                 if (Re != null)
                 {
+                    cgrief.Add("{0} checked the grief at POS ({1}, {2}).".SFormat(args.Player.User.Name, Re.X, Re.Y));
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked the grief at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
                     args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     GriefLoc.Remove(Re);
@@ -444,6 +448,8 @@ namespace AIO
                 Report Re = HouseLoc[i];
                 if (Re != null)
                 {
+                    cbuilding.Add("{0} checked building at POS ({1}, {2}).".SFormat(args.Player.User.Name, Re.X, Re.Y));
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked building at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
                     args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     HouseLoc.Remove(Re);
@@ -475,25 +481,39 @@ namespace AIO
                 int ly = loc.Y;
                 if (lx > x - 50 && ly > y - 50 && lx < x + 50 && ly < y + 50)
                 {
-                    args.Player.SendErrorMessage("This location has already been reported!");
+                    args.Player.SendErrorMessage("This location has already been reported! Please wait until someone is available to protect it for you.");
                     return;
                 }
             }
-            if (!TShock.Regions.InArea(args.Player.TileX, args.Player.TileY))
+            if (args.Player.CurrentRegion == null)
             {
-                HouseLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.Name, DateTime.UtcNow));
+                HouseLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.User.Name, DateTime.UtcNow));
                 args.Player.SendSuccessMessage("Your House has been reported at {0}, {1}.", args.Player.TileX, args.Player.TileY);
-                Console.WriteLine(string.Format("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY));
+                Console.WriteLine(string.Format("{0} has reported a house at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY));
+                File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a building at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
                 foreach (TSPlayer ts in TShock.Players)
                 {
                     if (ts != null)
                     {
                         if (ts.Group.HasPermission("aio.checkbuilding"))
-                        { ts.SendInfoMessage("{0} has reported a house at: {1}, {2}", args.Player.Name, args.Player.TileX, args.Player.TileY); }
+                        { ts.SendInfoMessage("{0} has reported a house at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY); }
                     }
                 }
             }
-            else { args.Player.SendErrorMessage("This house is already protected, no need to report it!"); }
+            else {
+                if (args.Player.CurrentRegion.Owner == args.Player.User.Name)
+                {
+                    args.Player.SendSuccessMessage("This building has been protected for you!");
+                }
+                else if (args.Player.CurrentRegion.AllowedIDs.Contains(args.Player.User.ID))
+                {
+                    args.Player.SendSuccessMessage("This building has been protected and you have been allowed to build in it!");
+                }
+                else
+                {
+                    args.Player.SendSuccessMessage("This building has been protected for its owner!");
+                }
+            }
         }
         #endregion
         
@@ -523,14 +543,14 @@ namespace AIO
                 {
                     frozenplayer.Add(plr.IP);
                     if (!args.Silent)
-                        TSPlayer.All.SendInfoMessage("{0} froze {1}", args.Player.Name, plr.Name);
+                        TSPlayer.All.SendInfoMessage("{0} froze {1}", args.Player.User.Name, plr.Name);
                     return;
                 }
                 else
                 {
                     frozenplayer.Remove(plr.IP);
                     if (!args.Silent)
-                        TSPlayer.All.SendInfoMessage("{0} unfroze {1}", args.Player.Name, plr.Name);
+                        TSPlayer.All.SendInfoMessage("{0} unfroze {1}", args.Player.User.Name, plr.Name);
                     return;
                 }
             }
