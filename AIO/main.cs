@@ -15,7 +15,7 @@ using TShockAPI.DB;
 
 namespace AIO
 {
-    [ApiVersion(1, 18)]
+    [ApiVersion(1, 19)]
     public class AIO : TerrariaPlugin
     {
         #region items
