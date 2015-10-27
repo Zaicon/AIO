@@ -1,21 +1,20 @@
-﻿using Mono.Data.Sqlite;
-using MySql.Data.MySqlClient;
+﻿/* 
+* Credit goes to Ancientgods for original AIO plugin.
+*/
+
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-using TShockAPI.DB;
 
 
 namespace AIO
 {
-    [ApiVersion(1, 21)]
+    [ApiVersion(1, 22)]
     public class AIO : TerrariaPlugin
     {
         #region items
@@ -52,7 +51,7 @@ namespace AIO
         }
         public override string Author
         {
-            get { return "Ancientgods"; }
+            get { return "Zaicon"; }
         }
         public override string Name
         {
