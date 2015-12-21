@@ -454,7 +454,7 @@ namespace AIO
                     return;
                 }
             }
-            if (args.Player.CurrentRegion == null)
+            if (args.Player.CurrentRegion == null || !args.Player.CurrentRegion.DisableBuild)
             {
                 HouseLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.User.Name, DateTime.UtcNow));
                 args.Player.SendSuccessMessage("Your House has been reported at {0}, {1}.", args.Player.TileX, args.Player.TileY);
