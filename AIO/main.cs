@@ -10,7 +10,7 @@ using System.Reflection;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-
+using TShockAPI.Hooks;
 
 namespace AIO
 {
@@ -70,6 +70,8 @@ namespace AIO
         {
             ServerApi.Hooks.GameUpdate.Register(this, OnUpdate);
             ServerApi.Hooks.ServerChat.Register(this, OnChat);
+            PlayerHooks.PlayerPostLogin += onLogin;
+            PlayerHooks.PlayerLogout += onLogout;
 
 
             #region staffchatcommands
@@ -106,6 +108,8 @@ namespace AIO
             {
                 ServerApi.Hooks.GameUpdate.Deregister(this, OnUpdate);
                 ServerApi.Hooks.ServerChat.Deregister(this, OnChat);
+                PlayerHooks.PlayerPostLogin -= onLogin;
+                PlayerHooks.PlayerLogout -= onLogout;
             }
             base.Dispose(disposing);
         }
@@ -116,6 +120,30 @@ namespace AIO
             : base(game)
         {
             Order = 9999;
+        }
+        #endregion
+        
+        #region login/logout
+        public void onLogin(PlayerPostLoginEventArgs args)
+        {
+            if (args.Player != null && args.Player.User != null)
+            {
+                if (args.Player.Group.HasPermission("aio.checkgrief"))
+                {
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{args.Player.User.Name} has logged in.\r\n");
+                }
+            }
+        }
+
+        public void onLogout(PlayerLogoutEventArgs args)
+        {
+            if (args.Player != null && args.Player.User != null)
+            {
+                if (args.Player.Group.HasPermission("aio.checkgrief"))
+                {
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{args.Player.User.Name} has logged out.\r\n");
+                }
+            }
         }
         #endregion
 
@@ -357,7 +385,7 @@ namespace AIO
             GriefLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.User.Name, DateTime.UtcNow));
             args.Player.SendSuccessMessage("Your grief has been reported!");
             Console.WriteLine(string.Format("{0} has sent in a grief report at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY));
-            File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a grief at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
+            File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a grief at POS ({1}, {2}).\r\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
             foreach (TSPlayer ts in TShock.Players)
             {
                 if (ts != null)
@@ -377,7 +405,7 @@ namespace AIO
             for (int i = 0; i < GriefLoc.Count; i++)
             {
                 Report Re = GriefLoc[i];
-                args.Player.SendInfoMessage(string.Format("[{0}] {1} reported a grief at POS ({2},{3}) at {4}", (i + 1).ToString(), Re.Name, Re.X, Re.Y, Re.Date));
+                args.Player.SendInfoMessage(string.Format("[{0}] {1} reported a grief at POS ({2},{3}) at {4}.", (i + 1).ToString(), Re.Name, Re.X, Re.Y, Re.Date));
             }
 
         }
@@ -394,7 +422,7 @@ namespace AIO
                 if (Re != null)
                 {
                     cgrief.Add("{0} checked the grief at POS ({1}, {2}).".SFormat(args.Player.User.Name, Re.X, Re.Y));
-                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked the grief at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked the grief at POS ({1}, {2}).\r\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
                     args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     GriefLoc.Remove(Re);
@@ -418,7 +446,7 @@ namespace AIO
                 if (Re != null)
                 {
                     cbuilding.Add("{0} checked building at POS ({1}, {2}).".SFormat(args.Player.User.Name, Re.X, Re.Y));
-                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked building at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} checked building at POS ({1}, {2}).\r\n".SFormat(args.Player.User.Name, Re.X, Re.Y, DateTime.Now.ToString("g")));
                     args.Player.Teleport(Re.X * 16, Re.Y * 16);
                     args.Player.SendInfoMessage("Reported by: {0} at {1}", Re.Name, Re.Date);
                     HouseLoc.Remove(Re);
@@ -459,7 +487,7 @@ namespace AIO
                 HouseLoc.Add(new Report(args.Player.TileX, args.Player.TileY, args.Player.User.Name, DateTime.UtcNow));
                 args.Player.SendSuccessMessage("Your House has been reported at {0}, {1}.", args.Player.TileX, args.Player.TileY);
                 Console.WriteLine(string.Format("{0} has reported a house at: {1}, {2}", args.Player.User.Name, args.Player.TileX, args.Player.TileY));
-                File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a building at POS ({1}, {2}).\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
+                File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), "{3} :: {0} reported a building at POS ({1}, {2}).\r\n".SFormat(args.Player.User.Name, args.Player.TileX, args.Player.TileY, DateTime.Now.ToString("g")));
                 foreach (TSPlayer ts in TShock.Players)
                 {
                     if (ts != null)
