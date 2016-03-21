@@ -130,7 +130,7 @@ namespace AIO
             {
                 if (args.Player.Group.HasPermission("aio.checkgrief"))
                 {
-                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{args.Player.User.Name} has logged in.\r\n");
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{DateTime.Now.ToString("g")} :: {args.Player.User.Name} has logged in.\r\n");
                 }
             }
         }
@@ -141,7 +141,7 @@ namespace AIO
             {
                 if (args.Player.Group.HasPermission("aio.checkgrief"))
                 {
-                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{args.Player.User.Name} has logged out.\r\n");
+                    File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{DateTime.Now.ToString("g")} :: {args.Player.User.Name} has logged out.\r\n");
                 }
             }
         }
