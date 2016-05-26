@@ -14,7 +14,7 @@ using TShockAPI.Hooks;
 
 namespace AIO
 {
-    [ApiVersion(1, 22)]
+    [ApiVersion(1, 23)]
     public class AIO : TerrariaPlugin
     {
         #region items
@@ -36,12 +36,6 @@ namespace AIO
 
         Color staffchatcolor = new Color(200, 50, 150);
         DateTime LastCheck = DateTime.UtcNow;
-
-        short[] torchframey = new short[] { 0, 22, 44, 66, 88, 110, 132, 154, 176, 198, 220, 242 };
-        short[] platformframey = new short[] { 0, 18, 36, 54, 72, 90, 108, 144, 234, /* halloween ->*/ 228 };
-        int[] tiles = new int[] { 38, 39, 41, 43, 44, 45, 47, 54, 118, 119, 121, 122, 140, 145, 146, 148, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 175, 176, 177, 189, 190, 191, 193, 194, 195, 196, 197, 198, 202, 206, 208, 225, 226, 229, 230, 248, 249, 250, /* halloween ->*/ 251, 252, 253 };
-        int[] walls = new int[] { 4, 5, 6, 7, 9, 10, 11, 12, 19, 21, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 45, 46, 47, 72, 73, 74, 75, 76, 78, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 109, 110, /* halloween ->*/ 113, 114, 115 };
-        int[] chests = new int[] { 1, 3, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 };
         #endregion
 
         #region plugin info
@@ -60,7 +54,7 @@ namespace AIO
 
         public override string Description
         {
-            get { return "all-in-one plugin, now compatible with infinite chests!"; }
+            get { return "All-In-One Plugin"; }
         }
         #endregion
 
@@ -69,7 +63,6 @@ namespace AIO
         public override void Initialize()
         {
             ServerApi.Hooks.GameUpdate.Register(this, OnUpdate);
-            ServerApi.Hooks.ServerChat.Register(this, OnChat);
             PlayerHooks.PlayerPostLogin += onLogin;
             PlayerHooks.PlayerLogout += onLogout;
 
@@ -95,8 +88,6 @@ namespace AIO
             Commands.ChatCommands.Add(new Command("aio.read", GetItemOrBuff, "read"));
             Commands.ChatCommands.Add(new Command("aio.copy", copyitems, "copy") { AllowServer = false });
             Commands.ChatCommands.Add(new Command("aio.worldgen", world_gen, "gen") { AllowServer = false });
-            Commands.ChatCommands.Add(new Command("aio.spywhisper", SPY, "spywhisper"));
-            // Chestroom removed since it's in a separate plugin.
             #endregion
         }
         #endregion
@@ -107,7 +98,6 @@ namespace AIO
             if (disposing)
             {
                 ServerApi.Hooks.GameUpdate.Deregister(this, OnUpdate);
-                ServerApi.Hooks.ServerChat.Deregister(this, OnChat);
                 PlayerHooks.PlayerPostLogin -= onLogin;
                 PlayerHooks.PlayerLogout -= onLogout;
             }
@@ -142,32 +132,6 @@ namespace AIO
                 if (args.Player.Group.HasPermission("aio.checkgrief"))
                 {
                     File.AppendAllText(Path.Combine(filepath, DateTime.Now.ToString("yyyy-MM-dd") + ".log"), $"{DateTime.Now.ToString("g")} :: {args.Player.User.Name} has logged out.\r\n");
-                }
-            }
-        }
-        #endregion
-
-        #region onchat
-        public void OnChat(ServerChatEventArgs args)
-        {
-            List<string> whisperalts = new List<string> { "w", "whisper", "t", "tell", "r", "reply" };
-            if (args.Text.StartsWith(TShock.Config.CommandSpecifier) || args.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
-            {
-                foreach (string alt in whisperalts)
-                {
-                    if (args.Text.StartsWith("{0}{1} ".SFormat(args.Text[0].ToString(), alt)))
-                    {
-                        foreach (TSPlayer ts in TShock.Players)
-                        {
-                            if (ts != null)
-                            {
-                                if (spies.Contains(ts.IP))
-                                {
-                                    ts.SendMessage(TShock.Players[args.Who].Name + ": " + args.Text, staffchatcolor);
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -844,22 +808,7 @@ namespace AIO
             }
         }
         //ends here
-        #endregion
-
-        #region spywhisper
-        private void SPY(CommandArgs args)
-        {
-            if (spies.Contains(args.Player.IP))
-            {
-                spies.Remove(args.Player.IP);
-                args.Player.SendSuccessMessage("You have stopped spying on whispers");
-                return;
-            }
-            spies.Add(args.Player.IP);
-            args.Player.SendSuccessMessage("You are now spying on whispers");
-        }
-        #endregion
-        
+        #endregion        
         #endregion commands
     }
 }
