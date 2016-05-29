@@ -366,6 +366,9 @@ namespace AIO
                 args.Player.SendErrorMessage("There currently isn't any reported grief");
                 return;
             }
+            args.Player.SendInfoMessage($"There are {HouseLoc.Count} reported griefs.");
+            if (args.Parameters.Count < 1 || args.Parameters[0].ToLower() != "all")
+                return;
             for (int i = 0; i < GriefLoc.Count; i++)
             {
                 Report Re = GriefLoc[i];
@@ -425,6 +428,9 @@ namespace AIO
                 args.Player.SendErrorMessage("There currently aren't any reported buildings");
                 return;
             }
+            args.Player.SendInfoMessage($"There are {HouseLoc.Count} reported buildings.");
+            if (args.Parameters.Count < 1 || args.Parameters[0].ToLower() != "all")
+                return;
             for (int i = 0; i < HouseLoc.Count; i++)
             {
                 Report Re = HouseLoc[i];
