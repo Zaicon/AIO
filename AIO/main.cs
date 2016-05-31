@@ -14,7 +14,7 @@ using TShockAPI.Hooks;
 
 namespace AIO
 {
-    [ApiVersion(1, 23)]
+    [ApiVersion(1, 24)]
     public class AIO : TerrariaPlugin
     {
         #region items
