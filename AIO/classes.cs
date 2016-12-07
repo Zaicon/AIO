@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OTAPI.Tile;
+using System;
 using Terraria;
 
 namespace AIO
@@ -7,7 +8,7 @@ namespace AIO
     {
         public int X;
         public int Y;
-        public Tile Tile;
+        public ITile Tile;
         public Backup(int x, int y)
         {
             X = x;
