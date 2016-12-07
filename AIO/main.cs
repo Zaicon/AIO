@@ -2,6 +2,7 @@
 * Credit goes to Ancientgods for original AIO plugin.
 */
 
+using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +15,7 @@ using TShockAPI.Hooks;
 
 namespace AIO
 {
-    [ApiVersion(1, 25)]
+    [ApiVersion(1, 26)]
     public class AIO : TerrariaPlugin
     {
         #region items
