@@ -1,2 +1,2 @@
 language: csharp
-solution: AIO.sln
+solution: AIO/AIO.sln
