@@ -15,7 +15,7 @@ using TShockAPI.Hooks;
 
 namespace AIO
 {
-	[ApiVersion(2, 0)]
+	[ApiVersion(2, 1)]
 	public class AIO : TerrariaPlugin
 	{
 		#region items
@@ -495,7 +495,7 @@ namespace AIO
 						List<string> items = new List<string>();
 
 						foreach (Item Item in plr.TPlayer.inventory.Where(e => e.active && e.netID > 0))
-							items.Add(Item.name); amount++;
+							items.Add(Item.Name); amount++;
 
 						if (amount <= 0)
 						{
@@ -524,7 +524,7 @@ namespace AIO
 						List<string> armor = new List<string>();
 
 						foreach (Item InvItem in plr.TPlayer.armor.Where(e => e.active && e.netID > 0))
-							armor.Add(InvItem.name);
+							armor.Add(InvItem.Name);
 
 						if (armor.Count == 0)
 						{
@@ -539,7 +539,7 @@ namespace AIO
 						List<string> dye = new List<string>();
 
 						foreach (Item DyeItem in plr.TPlayer.dye.Where(e => e.active && e.netID > 0))
-							dye.Add(DyeItem.name);
+							dye.Add(DyeItem.Name);
 
 						if (dye.Count == 0)
 						{
@@ -586,7 +586,7 @@ namespace AIO
 					case "items":
 					case "inventory":
 						foreach (Item Item in plr.TPlayer.inventory.Where(e => e.active && e.netID > 0))
-							args.Player.GiveItemCheck(Item.type, Item.name, Item.width, Item.height, Item.stack, Item.prefix);
+							args.Player.GiveItemCheck(Item.type, Item.Name, Item.width, Item.height, Item.stack, Item.prefix);
 						return;
 					case "buff":
 					case "buffs":
@@ -595,12 +595,12 @@ namespace AIO
 						return;
 					case "armor":
 						foreach (Item Item in plr.TPlayer.armor.Where(e => e.active && e.netID > 0))
-							args.Player.GiveItemCheck(Item.type, Item.name, Item.width, Item.height, 1, Item.prefix);
+							args.Player.GiveItemCheck(Item.type, Item.Name, Item.width, Item.height, 1, Item.prefix);
 						return;
 					case "dye":
 					case "dyes":
 						foreach (Item Item in plr.TPlayer.dye.Where(e => e.active && e.netID > 0))
-							args.Player.GiveItemCheck(Item.type, Item.name, Item.width, Item.height, 1, Item.prefix);
+							args.Player.GiveItemCheck(Item.type, Item.Name, Item.width, Item.height, 1, Item.prefix);
 						return;
 					default:
 						args.Player.SendErrorMessage($"Invalid syntax! Proper syntax: {args.Silent.Specifier()}copy <inventory/buff/armor/dye> <player>");
